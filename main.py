@@ -1,6 +1,12 @@
 import os
 from dotenv import load_dotenv
 from google import genai
+import argparse
+
+parser = argparse.ArgumentParser(description="Chatbot")
+parser.add_argument("user_prompt", type=str, help="User prompt")
+args = parser.parse_args()
+
 
 def main():
     load_dotenv()
@@ -13,7 +19,7 @@ def main():
 
     response = client.models.generate_content(
         model="gemini-2.5-flash",
-        contents="Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum."
+        contents= args.user_prompt
     )
     try:
         print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
