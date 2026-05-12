@@ -23,26 +23,37 @@ def main():
 
     client = genai.Client(api_key=api_key)
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents= messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions],
-            system_instruction=system_prompt,
-            temperature=0,
-        ),
-    )
+    for _ in range(20):
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions],
+                system_instruction=system_prompt,
+                temperature=0,
+            ),
+        )
 
-    if args.verbose:
-        try:
-            print(f"User prompt: {args.user_prompt}")
-            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-        except RuntimeError:
-            print("Token usage information is not available for this response.")
-    function_results = []
+        if args.verbose:
+            try:
+                print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+                print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+            except RuntimeError:
+                print("Token usage information is not available for this response.")
 
-    if response.function_calls:
+        # Append model's candidates to message history
+        if response.candidates:
+            for candidate in response.candidates:
+                messages.append(candidate.content)
+
+        # No function calls — final response
+        if not response.function_calls:
+            print("Final response:")
+            print(response.text)
+            return
+
+        # Handle function calls
+        function_responses = []
         for function_call in response.function_calls:
             function_call_result = call_function(function_call, verbose=args.verbose)
 
@@ -53,12 +64,17 @@ def main():
             if function_call_result.parts[0].function_response.response is None:
                 raise Exception("No response data in function response")
 
-        function_results.append(function_call_result.parts[0])
+            function_responses.append(function_call_result.parts[0])
 
-        if args.verbose:
-            print(f"-> {function_call_result.parts[0].function_response.response}")
-    else:
-        print(response.text)
+            if args.verbose:
+                print(f"-> {function_call_result.parts[0].function_response.response}")
+
+        # Append tool results to message history
+        messages.append(types.Content(role="user", parts=function_responses))
+
+    print("Error: maximum iterations reached without a final response.")
+    exit(1)
+
 
 if __name__ == "__main__":
     main()
