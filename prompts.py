@@ -5,6 +5,7 @@ When a user asks a question or makes a request, make a function call plan. You c
 
 - List files and directories
 - Read file contents
+- Search file contents for patterns
 - Execute Python files with optional arguments
 - Write or overwrite files
 
